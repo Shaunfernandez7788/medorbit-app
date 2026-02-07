@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* --- CUSTOM RESULT BOX COLORS --- */
+    .st-green { background-color: #1c4f2e; color: #4ade80; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #225c34; }
+    .st-blue { background-color: #142d4c; color: #dbeafe; padding: 20px; border-radius: 5px; height: 100%; border-left: 5px solid #3b82f6; }
+    .st-blue h5 { color: #60a5fa; font-weight: bold; margin-bottom: 15px; }
+    .st-yellow { background-color: #3f3615; color: #fef3c7; padding: 20px; border-radius: 5px; height: 100%; border-left: 5px solid #eab308; }
+    .st-yellow h5 { color: #facc15; font-weight: bold; margin-bottom: 15px; }
+
+    /* --- TAG INPUT STYLING --- */
+    .input-wrapper { position: relative; }
+
+    .search-container {
+        background-color: #262730;
+        border: 1px solid #41444C;
+        border-radius: 5px;
+        padding: 5px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        min-height: 45px;
+        cursor: text;
+    }
+    .search-container:focus-within {
+        border-color: #FF4B4B;
+        box-shadow: 0 0 0 0.2rem rgba(255, 75, 75, 0.25);
+    }
+
+    .search-input {
+        background: transparent;
+        border: none;
+        color: white;
+        flex-grow: 1;
+        min-width: 120px;
+        outline: none;
+        padding: 4px 8px;
+        font-size: 1rem;
+    }
+
+    .tag {
+        background-color: #FF4B4B;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        animation: fadeIn 0.2s;
+    }
+    .tag span.remove-btn {
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1.1rem;
+        line-height: 1;
+        opacity: 0.8;
+    }
+    .tag span.remove-btn:hover { opacity: 1; color: #000; }
+
+    .suggestions-list {
+        background-color: #262730;
+        border: 1px solid #41444C;
+        border-top: none;
+        max-height: 250px;
+        overflow-y: auto;
+        border-radius: 0 0 5px 5px;
+        display: none;
+        position: absolute;
+        width: 100%;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    
+    .suggestion-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #333;
+        color: #e0e0e0;
+        transition: background 0.2s;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background-color: #FF4B4B; color: white; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="mb-3">🩺 AI Health Assistant</h2>
+        <p class="text-secondary mb-4">Select your symptoms below to get a preliminary analysis.</p>
+    </div>
+</div>
+
+<div class="row">
+    
+    <div class="col-md-5">
+        <div class="card mb-4" style="overflow: visible;">
+            <div class="card-header">🔎 Symptom Selector</div>
+            <div class="card-body">
+                <form method="POST" action="/predict" id="healthForm">
+                    
+                    <select name="symptoms" id="realSelect" multiple style="display: none;"></select>
+
+                    <label class="form-label text-light mb-2">What are your symptoms?</label>
+                    
+                    <div class="input-wrapper">
+                        <div class="search-container" onclick="document.getElementById('symptomInput').focus()">
+                            <div id="tagsContainer" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                            <input type="text" id="symptomInput" class="search-input" placeholder="Type to search..." autocomplete="off">
+                        </div>
+                        <div id="suggestions" class="suggestions-list"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-4 w-100 py-2 fw-bold">Analyze Health</button>
+                    
+                    <button type="button" onclick="findHospitals()" class="btn btn-outline-danger mt-3 w-100 py-2 fw-bold">
+                        🏥 Find Nearby Hospitals
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        {% if prediction %}
+        
+        <div class="st-green">
+            <h4 class="m-0">Predicted Condition: {{ prediction }}</h4>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12 mb-3">
+                <div class="st-blue">
+                    <h5>What is it?</h5>
+                    <p class="mb-0 text-light">{{ description }}</p>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <div class="st-yellow">
+                    <h5>Recommended Precautions:</h5>
+                    <ul class="mb-0 ps-3">
+                        {% for p in precautions %}
+                            <li class="text-light mb-1">{{ p.title() }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="text-center text-muted mt-5">
+            <h3 style="opacity: 0.5;">👈 Select symptoms to start</h3>
+        </div>
+        {% endif %}
+    </div>
+
+</div> <script>
+    // 1. Get the list of all symptoms from Flask/Jinja
+    // 'safe' filter added to prevent errors with JSON quotes
+    const allSymptoms = {{ symptoms | tojson | safe }};
+    
+    let selectedSymptoms = [];
+
+    // DOM Elements
+    const input = document.getElementById('symptomInput');
+    const suggestionsBox = document.getElementById('suggestions');
+    const tagsContainer = document.getElementById('tagsContainer');
+    const realSelect = document.getElementById('realSelect');
+
+    // --- FUNCTION: Render the Dropdown List ---
+    function renderSuggestions(filterText = '') {
+        suggestionsBox.innerHTML = ''; 
+        
+        const filtered = allSymptoms.filter(s => 
+            !selectedSymptoms.includes(s) && 
+            s.toLowerCase().replace('_', ' ').includes(filterText.toLowerCase())
+        );
+
+        if (filtered.length > 0) {
+            suggestionsBox.style.display = 'block';
+            filtered.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); 
+                div.onclick = () => addSymptom(s);
+                suggestionsBox.appendChild(div);
+            });
+        } else {
+            suggestionsBox.style.display = 'none';
+        }
+    }
+
+    // --- FUNCTION: Add a Symptom ---
+    function addSymptom(symptom) {
+        selectedSymptoms.push(symptom);
+        input.value = ''; 
+        renderTags();
+        renderSuggestions(''); 
+        updateHiddenSelect();
+        input.focus(); 
+    }
+
+    // --- FUNCTION: Remove a Symptom ---
+    function removeSymptom(symptom) {
+        selectedSymptoms = selectedSymptoms.filter(s => s !== symptom);
+        renderTags();
+        updateHiddenSelect();
+    }
+
+    // --- FUNCTION: Render Tags ---
+    function renderTags() {
+        tagsContainer.innerHTML = '';
+        selectedSymptoms.forEach(s => {
+            const tag = document.createElement('div');
+            tag.className = 'tag';
+            
+            const text = document.createElement('span');
+            text.textContent = s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            const cross = document.createElement('span');
+            cross.className = 'remove-btn';
+            cross.innerHTML = '&times;'; // Changed to HTML entity for safety
+            cross.onclick = (e) => {
+                e.stopPropagation(); 
+                removeSymptom(s);
+            };
+
+            tag.appendChild(text);
+            tag.appendChild(cross);
+            tagsContainer.appendChild(tag);
+        });
+    }
+
+    // --- FUNCTION: Update Hidden Select ---
+    function updateHiddenSelect() {
+        realSelect.innerHTML = '';
+        selectedSymptoms.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s;
+            option.selected = true;
+            realSelect.appendChild(option);
+        });
+    }
+
+    // --- EVENT LISTENERS ---
+    input.addEventListener('input', (e) => renderSuggestions(e.target.value));
+    input.addEventListener('click', () => renderSuggestions(input.value));
+    input.addEventListener('focus', () => renderSuggestions(input.value));
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-wrapper')) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    // --- HOSPITAL FUNCTIONS ---
+    function findHospitals() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition, showError);
+        } else {
+            alert("Geolocation is not supported by this browser.");
+            // Fallback to general search
+            window.open("https://www.google.com/maps/search/hospitals+near+me", "_blank");
+        }
+    }
+
+    function showPosition(position) {
+        let lat = position.coords.latitude;
+        let lon = position.coords.longitude;
+        // CORRECTED URL:
+        let url = `https://www.google.com/maps/search/hospitals/@${lat},${lon},15z`;
+        window.open(url, "_blank");
+    }
+
+    function showError(error) {
+        // Fallback if user denies location permission
+        window.open("https://www.google.com/maps/search/hospitals+near+me", "_blank");
+    }
+</script>
+{% endblock %}

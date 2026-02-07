@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MedOrbit</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* GLOBAL DARK THEME */
+        body {
+            background-color: #0E1117;
+            color: #FAFAFA;
+            font-family: "Source Sans Pro", sans-serif;
+        }
+
+        /* Darker Navbar */
+        .navbar {
+            background-color: #0E1117 !important;
+            border-bottom: 1px solid #262730;
+        }
+        .navbar-brand { font-weight: bold; font-size: 1.5rem; }
+
+        /* Card/Container Styling */
+        .card {
+            background-color: #262730;
+            border: 1px solid #41444C;
+            border-radius: 8px;
+            color: white;
+        }
+        .card-header {
+            background-color: #262730;
+            border-bottom: 1px solid #41444C;
+            font-weight: bold;
+            color: #FAFAFA;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background-color: #FF4B4B;
+            border: none;
+            font-weight: bold;
+        }
+        .btn-primary:hover { background-color: #FF2B2B; }
+
+        /* SOS BUTTON ANIMATION */
+        .btn-sos {
+            background-color: #dc3545;
+            color: white;
+            font-weight: bold;
+            border: 2px solid #ff6b6b;
+            margin-right: 15px;
+            animation: pulse-red 2s infinite;
+        }
+        .btn-sos:hover {
+            background-color: #ff0000;
+            color: white;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #0E1117; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: #888; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🩺 MedOrbit</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto align-items-center">
+                    
+                    <a href="tel:112" class="btn btn-sos rounded-pill px-4">
+                        🆘 Emergency: 112
+                    </a>
+
+                    {% if current_user.is_authenticated %}
+                        <a class="nav-link text-white" href="/logout">Logout</a>
+                    {% else %}
+                        <a class="nav-link text-white" href="/login">Login</a>
+                        <a class="nav-link text-white" href="/register">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-warning" role="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    {% if current_user.is_authenticated %}
+    
+    <div id="chat-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        <button id="chat-btn" onclick="toggleChat()" class="btn btn-primary rounded-circle p-3 shadow-lg" style="width: 60px; height: 60px; font-size: 24px;">
+            💬
+        </button>
+
+        <div id="chat-window" class="card shadow-lg" style="display: none; width: 350px; height: 500px; position: absolute; bottom: 80px; right: 0; border: 1px solid #41444C; background-color: #262730; overflow: hidden;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span>🤖 MedOrbit Assistant</span>
+                <button onclick="toggleChat()" class="btn btn-sm btn-light text-primary">&times;</button>
+            </div>
+            <div id="chat-messages" class="card-body" style="overflow-y: auto; height: 380px; background-color: #1a1c24; padding: 10px;">
+                <div class="message bot-msg" style="margin-bottom: 10px;">
+                    <span class="badge bg-primary">AI</span>
+                    <div class="p-2 rounded text-white" style="background-color: #31333F; display: inline-block; max-width: 80%;">
+                        Hello! I am MedOrbit AI. Ask me any health-related question.
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer p-2" style="background-color: #262730; border-top: 1px solid #41444C;">
+                <div class="input-group">
+                    <input type="text" id="user-input" class="form-control" placeholder="Type a question..." style="background-color: #31333F; color: white; border: 1px solid #555;">
+                    <button onclick="sendMessage()" class="btn btn-primary">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleChat() {
+            var chatWindow = document.getElementById("chat-window");
+            if (chatWindow.style.display === "none") {
+                chatWindow.style.display = "block";
+            } else {
+                chatWindow.style.display = "none";
+            }
+        }
+
+        function sendMessage() {
+            var input = document.getElementById("user-input");
+            var message = input.value;
+            var chatBox = document.getElementById("chat-messages");
+
+            if (message.trim() === "") return;
+
+            var userDiv = document.createElement("div");
+            userDiv.style.textAlign = "right";
+            userDiv.style.marginBottom = "10px";
+            userDiv.innerHTML = `
+                <div class="p-2 rounded text-white" style="background-color: #FF4B4B; display: inline-block; max-width: 80%; text-align: left;">
+                    ${message}
+                </div>
+                <span class="badge bg-secondary">You</span>
+            `;
+            chatBox.appendChild(userDiv);
+            input.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            fetch('/chat_response', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: message})
+            })
+            .then(response => response.json())
+            .then(data => {
+                var botDiv = document.createElement("div");
+                botDiv.style.marginBottom = "10px";
+                botDiv.innerHTML = `
+                    <span class="badge bg-primary">AI</span>
+                    <div class="p-2 rounded text-white" style="background-color: #31333F; display: inline-block; max-width: 80%;">
+                        ${data.response}
+                    </div>
+                `;
+                chatBox.appendChild(botDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+        
+        document.getElementById("user-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+    {% endif %} <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
