@@ -147,8 +147,8 @@ Open your browser and go to: `http://127.0.0.1:5000`
 
 * *Computer Science Engineering Student*
 * *Cambridge Institute of Technology, Bangalore*
-* [LinkedIn Profile](https://www.google.com/search?q=https://linkedin.com/in/shaun-anselm-fernandez) (Add your actual link)
-* [GitHub Profile](https://www.google.com/search?q=https://github.com/Shaunfernandez7788)
+* [LinkedIn Profile](https://www.linkedin.com/in/shaun-fernandez7878) (Add your actual link)
+* [GitHub Profile](https://github.com/Shaunfernandez7788)
 
 ---
 
