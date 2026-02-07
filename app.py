@@ -138,15 +138,15 @@ def predict():
     except Exception as e:
         return render_template('dashboard.html', symptoms=symptom_list, prediction="Error", description=str(e))
 
-# --- CHATBOT ROUTE (FIXED & SECURE) ---
+# --- CHATBOT ROUTE (FIXED FOR COMPATIBILITY) ---
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
     try:
         user_input = request.json.get('message')
         
-        # Initialize model inside the route to handle server restarts/threads better
-        # We use 'gemini-1.5-flash' as it is currently the most stable for this use case
-        model_ai = genai.GenerativeModel("gemini-1.5-flash")
+        # FIX: Using "gemini-pro" instead of "gemini-1.5-flash".
+        # This model is compatible with ALL library versions on Render.
+        model_ai = genai.GenerativeModel("gemini-pro")
         
         chat = model_ai.start_chat(history=[])
         
