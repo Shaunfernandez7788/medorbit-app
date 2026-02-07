@@ -159,24 +159,22 @@ def chat_response():
     try:
         user_input = request.json.get('message')
         
-        # 1. SETUP THE MODEL FRESH EVERY TIME (Crucial for Render servers)
-        # (Make sure your API key is configured at the top of the file)
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction="You are MedOrbit, a helpful AI medical assistant. Keep answers brief and helpful."
-        )
+        # --- FIX 1: Use the standard, stable model (1.5 instead of 2.5) ---
+        # --- FIX 2: Removed 'system_instruction' to prevent version errors ---
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
-        # 2. START A NEW CHAT
         chat = model.start_chat(history=[])
         
-        # 3. SEND MESSAGE
-        response = chat.send_message(user_input)
+        # --- FIX 3: Added a simple prompt to act like a doctor ---
+        prompt = f"You are a helpful medical assistant. User asks: {user_input}"
+        
+        response = chat.send_message(prompt)
         
         return jsonify({'response': response.text})
 
     except Exception as e:
-        # This prints the SPECIFIC error to the logs so we can see it next time
-        print(f"❌ CHATBOT ERROR: {e}", flush=True) 
+        # This will print the EXACT error to your Render logs
+        print(f"❌ REAL ERROR HERE: {e}", flush=True) 
         return jsonify({'response': "I am having trouble connecting. Please try again."})
 if __name__ == '__main__':
     app.run(debug=True)
