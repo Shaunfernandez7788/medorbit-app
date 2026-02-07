@@ -146,7 +146,7 @@ def chat_response():
         
         # FIX: Using "gemini-pro" instead of "gemini-1.5-flash".
         # This model is compatible with ALL library versions on Render.
-        model_ai = genai.GenerativeModel("gemini-pro")
+        model_ai = genai.GenerativeModel("gemini-1.5-flash")
         
         chat = model_ai.start_chat(history=[])
         
