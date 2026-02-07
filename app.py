@@ -1,48 +1,28 @@
 import google.generativeai as genai
-from flask import jsonify
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import jsonify, Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import joblib
 import pandas as pd
 import os
+from dotenv import load_dotenv # Required for local testing
+
+# --- 1. SECURE API KEY SETUP ---
+# This looks for the key in Render's "Environment" tab or a local .env file
+load_dotenv() 
+
+api_key = os.environ.get("GEMINI_API_KEY")
+
+if not api_key:
+    print("❌ WARNING: GEMINI_API_KEY not found. Chatbot will fail until added to Render Environment.")
+else:
+    genai.configure(api_key=api_key)
 
 app = Flask(__name__)
-# Configure Gemini AI
-genai.configure(api_key="AIzaSyD7qowo9WqUBu0-jCpexxuDSBoZbB8pQfU")
 
-# Set up the model with a specific "Persona" for accuracy
-generation_config = {
-    "temperature": 0.7,
-    "top_p": 1,
-    "top_k": 1,
-    "max_output_tokens": 2048,
-}
-
-safety_settings = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-    },
-]
-
-model_ai = genai.GenerativeModel(model_name="gemini-2.5-flash",
-                              generation_config=generation_config,
-                              safety_settings=safety_settings)
-app.config['SECRET_KEY'] = 'secret-key-goes-here'
+# Config
+app.config['SECRET_KEY'] = 'secret-key-goes-here' # Change this to a random string for production
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
 # --- DATABASE SETUP ---
@@ -64,12 +44,15 @@ with app.app_context():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- LOAD AI MODEL ---
-# Loading these once when the app starts
-model = joblib.load('model.pkl')
-symptom_list = joblib.load('symptoms.pkl')
-desc_df = pd.read_csv('symptom_Description.csv')
-prec_df = pd.read_csv('symptom_precaution.csv')
+# --- LOAD ML MODELS ---
+# We use try/except here so the app doesn't crash if files are missing locally
+try:
+    model = joblib.load('model.pkl')
+    symptom_list = joblib.load('symptoms.pkl')
+    desc_df = pd.read_csv('symptom_Description.csv')
+    prec_df = pd.read_csv('symptom_precaution.csv')
+except Exception as e:
+    print(f"⚠️ Warning: ML files not found. Prediction will fail. Error: {e}")
 
 # --- ROUTES ---
 
@@ -126,55 +109,58 @@ def dashboard():
 @app.route('/predict', methods=['POST'])
 @login_required
 def predict():
-    # Get selected symptoms from the form
-    selected_symptoms = request.form.getlist('symptoms')
-    
-    # Create input vector for model
-    input_data = [0] * len(symptom_list)
-    for symptom in selected_symptoms:
-        if symptom in symptom_list:
-            index = symptom_list.index(symptom)
-            input_data[index] = 1
-            
-    # AI Prediction
-    prediction = model.predict([input_data])[0]
-    
-    # Get Details
-    desc_row = desc_df[desc_df['Disease'] == prediction]
-    description = desc_row.iloc[0]['Description'] if not desc_row.empty else "No description."
-    
-    prec_row = prec_df[prec_df['Disease'] == prediction]
-    precautions = prec_row.iloc[0, 1:].dropna().values if not prec_row.empty else []
+    try:
+        # Get selected symptoms from the form
+        selected_symptoms = request.form.getlist('symptoms')
+        
+        # Create input vector for model
+        input_data = [0] * len(symptom_list)
+        for symptom in selected_symptoms:
+            if symptom in symptom_list:
+                index = symptom_list.index(symptom)
+                input_data[index] = 1
+                
+        # AI Prediction
+        prediction = model.predict([input_data])[0]
+        
+        # Get Details
+        desc_row = desc_df[desc_df['Disease'] == prediction]
+        description = desc_row.iloc[0]['Description'] if not desc_row.empty else "No description."
+        
+        prec_row = prec_df[prec_df['Disease'] == prediction]
+        precautions = prec_row.iloc[0, 1:].dropna().values if not prec_row.empty else []
 
-    return render_template('dashboard.html', 
-                           symptoms=symptom_list, 
-                           prediction=prediction,
-                           description=description,
-                           precautions=precautions)
-@app.route('/chat_response', methods=['POST'])
-# --- DELETE any 'chat = ...' or 'model = ...' lines that are OUTSIDE the function ---
+        return render_template('dashboard.html', 
+                               symptoms=symptom_list, 
+                               prediction=prediction,
+                               description=description,
+                               precautions=precautions)
+    except Exception as e:
+        return render_template('dashboard.html', symptoms=symptom_list, prediction="Error", description=str(e))
 
+# --- CHATBOT ROUTE (FIXED & SECURE) ---
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
     try:
         user_input = request.json.get('message')
         
-        # --- FIX 1: Use the standard, stable model (1.5 instead of 2.5) ---
-        # --- FIX 2: Removed 'system_instruction' to prevent version errors ---
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # Initialize model inside the route to handle server restarts/threads better
+        # We use 'gemini-1.5-flash' as it is currently the most stable for this use case
+        model_ai = genai.GenerativeModel("gemini-1.5-flash")
         
-        chat = model.start_chat(history=[])
+        chat = model_ai.start_chat(history=[])
         
-        # --- FIX 3: Added a simple prompt to act like a doctor ---
-        prompt = f"You are a helpful medical assistant. User asks: {user_input}"
+        # Prompt engineering to give it a medical persona
+        prompt = f"You are a helpful and empathetic medical assistant named MedOrbit. Keep your answers brief, supportive, and informative. The user asks: {user_input}"
         
         response = chat.send_message(prompt)
         
         return jsonify({'response': response.text})
 
     except Exception as e:
-        # This will print the EXACT error to your Render logs
-        print(f"❌ REAL ERROR HERE: {e}", flush=True) 
-        return jsonify({'response': "I am having trouble connecting. Please try again."})
+        # This will print the EXACT error to your Render logs for debugging
+        print(f"❌ CHATBOT ERROR: {e}", flush=True) 
+        return jsonify({'response': "I'm having trouble connecting right now. Please try again in a moment."})
+
 if __name__ == '__main__':
     app.run(debug=True)
