@@ -152,29 +152,31 @@ def predict():
                            description=description,
                            precautions=precautions)
 @app.route('/chat_response', methods=['POST'])
+# --- DELETE any 'chat = ...' or 'model = ...' lines that are OUTSIDE the function ---
+
+@app.route('/chat_response', methods=['POST'])
 def chat_response():
-    user_message = request.json.get('message')
-
-    if not user_message:
-        return jsonify({'response': "Please say something!"})
-
-    # Strict System Prompt for Accuracy
-    prompt = f"""
-    You are MedOrbit AI, a highly knowledgeable and responsible medical assistant.
-    User Question: {user_message}
-
-    Guidelines:
-    1. Provide accurate, science-based health information.
-    2. If the user asks about a serious condition, ALWAYS advise them to see a doctor immediately.
-    3. Keep answers concise (under 3-4 sentences) unless asked for detail.
-    4. Be empathetic but professional.
-    """
-
     try:
-        response = model_ai.generate_content(prompt)
+        user_input = request.json.get('message')
+        
+        # 1. SETUP THE MODEL FRESH EVERY TIME (Crucial for Render servers)
+        # (Make sure your API key is configured at the top of the file)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction="You are MedOrbit, a helpful AI medical assistant. Keep answers brief and helpful."
+        )
+        
+        # 2. START A NEW CHAT
+        chat = model.start_chat(history=[])
+        
+        # 3. SEND MESSAGE
+        response = chat.send_message(user_input)
+        
         return jsonify({'response': response.text})
-    except Exception as e:
-        return jsonify({'response': "I'm having trouble connecting to my medical database right now. Please try again."})
 
+    except Exception as e:
+        # This prints the SPECIFIC error to the logs so we can see it next time
+        print(f"❌ CHATBOT ERROR: {e}", flush=True) 
+        return jsonify({'response': "I am having trouble connecting. Please try again."})
 if __name__ == '__main__':
     app.run(debug=True)
