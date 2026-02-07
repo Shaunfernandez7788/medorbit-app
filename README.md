@@ -132,16 +132,6 @@ Open your browser and go to: `http://127.0.0.1:5000`
 
 ---
 
-## 📸 Screenshots
-
-*(You can upload your screenshots to the repository and link them here later)*
-
-| Dashboard | AI Chat |
-| --- | --- |
-|  |  |
-
----
-
 ## 🔮 Future Enhancements
 
 * **Voice Support:** Allowing users to speak directly to the AI assistant.
