@@ -138,29 +138,39 @@ def predict():
     except Exception as e:
         return render_template('dashboard.html', symptoms=symptom_list, prediction="Error", description=str(e))
 
-# --- CHATBOT ROUTE (FIXED FOR COMPATIBILITY) ---
+# --- SMART CHATBOT ROUTE (Auto-Detects Working Model) ---
 @app.route('/chat_response', methods=['POST'])
 def chat_response():
     try:
         user_input = request.json.get('message')
         
-        # FIX: Using "gemini-pro" instead of "gemini-1.5-flash".
-        # This model is compatible with ALL library versions on Render.
-        model_ai = genai.GenerativeModel("gemini-1.5-flash")
+        # 1. List available models to find a working one
+        model_name = "gemini-1.5-flash" # Default preference
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    # Prefer flash, but take any valid gemini model
+                    if 'flash' in m.name:
+                        model_name = m.name
+                        break
+                    elif 'gemini' in m.name:
+                        model_name = m.name
+        except Exception as e:
+            print(f"⚠️ Could not list models, falling back to default: {e}")
+
+        # 2. Configure the model with the found name
+        print(f"✅ USING MODEL: {model_name}", flush=True)
+        model_ai = genai.GenerativeModel(model_name)
         
         chat = model_ai.start_chat(history=[])
         
-        # Prompt engineering to give it a medical persona
-        prompt = f"You are a helpful and empathetic medical assistant named MedOrbit. Keep your answers brief, supportive, and informative. The user asks: {user_input}"
-        
+        prompt = f"You are a helpful medical assistant named MedOrbit. Keep answers brief. User asks: {user_input}"
         response = chat.send_message(prompt)
         
         return jsonify({'response': response.text})
 
     except Exception as e:
-        # This will print the EXACT error to your Render logs for debugging
         print(f"❌ CHATBOT ERROR: {e}", flush=True) 
-        return jsonify({'response': "I'm having trouble connecting right now. Please try again in a moment."})
-
+        return jsonify({'response': "I am having trouble connecting right now. Please try again."})
 if __name__ == '__main__':
     app.run(debug=True)
