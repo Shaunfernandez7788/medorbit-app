@@ -1,67 +1,68 @@
 # 🩺 MedOrbit - AI-Powered Health Assistant
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-2.3-black?style=for-the-badge&logo=flask&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Google%20Gemini-1.5%20Flash-8E75B2?style=for-the-badge&logo=google&logoColor=white)
+![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
+
 **MedOrbit** is a hybrid AI healthcare platform designed to provide accessible medical guidance. It combines **Supervised Machine Learning** for precise disease prediction with **Generative AI (Google Gemini)** for an interactive medical chatbot. The platform also features real-time emergency services and hospital geolocation.
 
 ---
 
 ## 🚀 Live Demo
 
-**[Click here to view the Live Website](https://medorbit-health.onrender.com/)** *(Note: Since this is hosted on a free instance, please allow 30-50 seconds for the server to wake up on the first visit.)*
+**[Click here to visit MedOrbit Live](https://medorbit-health.onrender.com/)**
+
+> **Note:** The application is hosted on a free Render instance. Please allow **30-50 seconds** for the server to wake up on the first visit.
 
 ---
 
 ## 🌟 Key Features
 
 ### 1. 🤖 AI Medical Chatbot (GenAI)
-
-* Powered by **Google Gemini 2.5 Flash**.
-* Provides instant, natural language answers to health-related queries (e.g., *"What should I eat if I have the flu?"*).
-* Maintains conversation context for follow-up questions.
+* **Smart Model Discovery:** Automatically detects and connects to the best available **Google Gemini 1.5 Flash** model.
+* **Context-Aware:** Provides instant, natural language answers to health-related queries (e.g., *"What home remedies work for a sore throat?"*).
+* **Persona-Based:** Engineered to respond with empathy and clarity, acting as a supportive medical assistant.
 
 ### 2. 🔍 Symptom Analyzer (Machine Learning)
-
-* Uses a custom-trained **Scikit-Learn model** (Decision Tree/Random Forest).
-* Predicts potential diseases based on user-selected symptoms (e.g., *Fever + Rash + Headache → Dengue*).
-* Trained on a dataset of over 40 common diseases and 130+ symptoms.
+* **Algorithm:** Custom-trained **Random Forest Classifier** using Scikit-Learn.
+* **Function:** Predicts potential diseases based on user-selected symptoms (e.g., *High Fever + Joint Pain + Rash → Chikungunya*).
+* **Dataset:** Trained on a verified medical dataset covering 40+ common diseases and 130+ distinct symptoms.
 
 ### 3. 🆘 Emergency SOS System
-
-* A dedicated, pulsing **Emergency Button** accessible from the navigation bar.
-* Instantly dials **112** (Universal Emergency Number) on mobile devices.
-* Designed for quick access in critical situations.
+* Dedicated **SOS Button** accessible globally from the navigation bar.
+* Instantly dials **112** (Universal Emergency Number) on mobile devices for immediate help.
 
 ### 4. 🏥 Hospital Locator
+* Integrated geolocation feature that finds nearby hospitals and clinics based on the user's current coordinates.
 
-* Integrated feature to find nearby hospitals and clinics based on the user's current location.
-
-### 5. 🔐 User Authentication
-
-* Secure Login and Registration system using Flask-Login.
-* Personalized dashboard for every user.
+### 5. 🔐 Secure User Dashboard
+* Complete authentication system (Login/Register) using **Flask-Login**.
+* Secure password hashing with **Werkzeug Security**.
 
 ---
 
 ## 🛠️ Tech Stack
 
 | Component | Technology Used |
-| --- | --- |
-| **Backend** | Python, Flask |
+| :--- | :--- |
+| **Backend** | Python, Flask, Gunicorn |
 | **Frontend** | HTML5, CSS3, Bootstrap 5, JavaScript |
-| **Machine Learning** | Scikit-Learn, Pandas, NumPy |
-| **Generative AI** | Google Gemini API (Generative AI SDK) |
-| **Database** | SQLite (Local) / PostgreSQL (Production) |
-| **Deployment** | Render (Cloud Platform), Gunicorn |
+| **Machine Learning** | Scikit-Learn, Pandas, NumPy, Joblib |
+| **Generative AI** | Google Gemini API (`google-generativeai`) |
+| **Database** | SQLite (Development) / SQLAlchemy ORM |
+| **Deployment** | Render Cloud Platform |
 | **Version Control** | Git, GitHub |
 
 ---
 
 ## 🏗️ Architecture
 
-MedOrbit uses a hybrid architecture to handle different types of user requests:
+MedOrbit uses a hybrid architecture to handle different types of user requests efficiently:
 
-1. **Chat Requests:** Routed to Google's Gemini API for generative text responses.
-2. **Prediction Requests:** Processed locally by the Flask server using the pre-trained `.pkl` model.
-3. **Emergency/Location:** Handled client-side via browser APIs for immediate response.
+1.  **Chat Requests:** Routed securely to Google's Gemini API via server-side API calls.
+2.  **Prediction Requests:** Processed locally by the Flask server using the pre-trained `.pkl` model (Low latency).
+3.  **Emergency/Location:** Handled client-side via browser APIs for immediate response.
 
 ```mermaid
 graph TD
@@ -83,14 +84,14 @@ Follow these steps to run the project locally on your machine.
 
 ### Prerequisites
 
-* Python 3.8 or higher installed.
-* A Google Cloud API Key for Gemini.
+* Python 3.9 or higher installed.
+* A valid [Google AI Studio API Key](https://aistudio.google.com/app/apikey).
 
 ### Steps
 
 1. **Clone the Repository**
 ```bash
-git clone https://github.com/Shaunfernandez7788/medorbit-app.git
+git clone [https://github.com/Shaunfernandez7788/medorbit-app.git](https://github.com/Shaunfernandez7788/medorbit-app.git)
 cd medorbit-app
 
 ```
@@ -99,7 +100,10 @@ cd medorbit-app
 2. **Create a Virtual Environment**
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+# On Windows:
+venv\Scripts\activate
+# On Mac/Linux:
+source venv/bin/activate
 
 ```
 
@@ -112,14 +116,17 @@ pip install -r requirements.txt
 
 
 4. **Set Up Environment Variables**
-Create a `.env` file or export your API key:
-```bash
-export GEMINI_API_KEY="your_api_key_here"
+* Create a file named `.env` in the root folder.
+* Add your API key inside it:
+```env
+GEMINI_API_KEY=your_actual_api_key_here
 
 ```
 
 
-*(Or simply paste your key into `app.py` for local testing)*
+
+
+*(Note: The `.env` file is hidden and secure. Do not share it publicly.)*
 5. **Run the Application**
 ```bash
 python app.py
@@ -134,10 +141,10 @@ Open your browser and go to: `http://127.0.0.1:5000`
 
 ## 🔮 Future Enhancements
 
-* **Voice Support:** Allowing users to speak directly to the AI assistant.
-* **Appointment Booking:** Integration with local doctors for scheduling.
-* **Medication Reminders:** Push notifications for medicine schedules.
-* **Profile History:** Saving past diagnoses and chat history for user reference.
+* **🎙️ Voice Support:** Enabling speech-to-text for hands-free symptom description.
+* **📅 Appointment Booking:** Integration with local doctor APIs for scheduling.
+* **💊 Medication Reminders:** Push notifications for medicine schedules via email/SMS.
+* **📂 Profile History:** Saving past diagnoses and chat history for long-term health tracking.
 
 ---
 
@@ -147,11 +154,14 @@ Open your browser and go to: `http://127.0.0.1:5000`
 
 * *Computer Science Engineering Student*
 * *Cambridge Institute of Technology, Bangalore*
-* [LinkedIn Profile](https://www.linkedin.com/in/shaun-fernandez7878) (Add your actual link)
-* [GitHub Profile](https://github.com/Shaunfernandez7788)
 
 ---
 
 ### 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
+
+```
+```
+* [LinkedIn Profile](https://www.linkedin.com/in/shaun-fernandez7878)
+* [GitHub Profile](https://github.com/Shaunfernandez7788)
