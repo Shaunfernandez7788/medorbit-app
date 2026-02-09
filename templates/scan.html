@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card bg-dark border-secondary shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📸 AI Health Scanner</h4>
+                </div>
+                <div class="card-body text-center">
+                    
+                    <p class="text-secondary mb-4">
+                        Upload a photo of a <strong>skin rash, medicine strip, or lab report</strong>. 
+                        <br>Gemini AI will analyze it for you.
+                    </p>
+
+                    <div class="upload-area p-5 border border-secondary rounded mb-3" id="drop-area" style="border-style: dashed !important; cursor: pointer;">
+                        <span style="font-size: 3rem;">📁</span>
+                        <h5 class="mt-2 text-light">Click or Drag Image Here</h5>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+
+                    <div id="preview-container" class="mb-3" style="display: none;">
+                        <img id="image-preview" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border-radius: 10px; border: 2px solid #444;">
+                    </div>
+
+                    <button onclick="analyzeImage()" class="btn btn-success w-100 py-2 fw-bold" id="analyzeBtn" disabled>
+                        🔍 Analyze Image
+                    </button>
+
+                    <div id="loading" class="mt-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-light mt-2">Analyzing with Gemini Vision...</p>
+                    </div>
+
+                    <div id="result-box" class="mt-4 text-start p-3 rounded" style="background-color: #1a1c24; border: 1px solid #41444C; display: none;">
+                        <h5 class="text-info">💡 Analysis Result:</h5>
+                        <div id="result-text" class="text-light" style="white-space: pre-wrap;"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    // 1. Handle Click to Upload
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    // 2. Handle File Selection
+    fileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                previewContainer.style.display = 'block';
+                analyzeBtn.disabled = false;
+                dropArea.style.display = 'none'; // Hide upload box after selection
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 3. Send to Backend
+    async function analyzeImage() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        // UI Updates
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('result-box').style.display = 'none';
+        analyzeBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/analyze_image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            // Show Results
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result-box').style.display = 'block';
+            
+            if (data.error) {
+                document.getElementById('result-text').innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+            } else {
+                // Formatting bold text slightly for readability
+                let formattedText = data.result.replace(/\*\*(.*?)\*\*/g, '<strong class="text-warning">$1</strong>');
+                document.getElementById('result-text').innerHTML = formattedText;
+            }
+        } catch (error) {
+            alert("Failed to connect to server.");
+            document.getElementById('loading').style.display = 'none';
+        } finally {
+            analyzeBtn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

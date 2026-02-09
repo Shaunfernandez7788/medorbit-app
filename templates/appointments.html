@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">📅 My Scheduled Appointments</h2>
+
+    {% if appointments %}
+    <div class="row">
+        {% for appt in appointments %}
+        <div class="col-md-6 mb-3">
+            <div class="card bg-dark border-secondary shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="text-info mb-1">{{ appt.hospital_name }}</h5>
+                            <span class="badge bg-success mb-2">Confirmed</span>
+                            <p class="text-light mb-0">
+                                🗓️ <strong>Date:</strong> <span id="date-{{appt.id}}">{{ appt.date }}</span><br>
+                                ⏰ <strong>Time:</strong> <span id="time-{{appt.id}}">{{ appt.time }}</span>
+                            </p>
+                        </div>
+                        <div class="btn-group-vertical">
+                            <button onclick="openEditModal('{{appt.id}}', '{{appt.date}}', '{{appt.time}}')" class="btn btn-sm btn-outline-warning mb-1">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="deleteAppointment('{{appt.id}}')" class="btn btn-sm btn-outline-danger">
+                                🗑️ Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+        <div class="mb-3" style="font-size: 4rem;">📭</div>
+        <h3 class="text-muted">You have no upcoming appointments.</h3>
+        <p class="text-secondary">Find a nearby hospital to schedule a checkup.</p>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary mt-3 px-4">
+            🔍 Find & Book Appointment
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">✏️ Reschedule Appointment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label>New Date</label>
+            <input type="date" id="editDate" class="form-control bg-dark text-light border-secondary">
+        </div>
+        <div class="mb-3">
+            <label>New Time</label>
+            <input type="time" id="editTime" class="form-control bg-dark text-light border-secondary">
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" onclick="saveEdit()" class="btn btn-warning">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let editingId = null;
+
+    function openEditModal(id, oldDate, oldTime) {
+        editingId = id;
+        document.getElementById('editDate').value = oldDate;
+        document.getElementById('editTime').value = oldTime;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    async function saveEdit() {
+        const date = document.getElementById('editDate').value;
+        const time = document.getElementById('editTime').value;
+
+        const response = await fetch(`/edit_appointment/${editingId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: date, time: time })
+        });
+
+        const result = await response.json();
+        alert(result.message);
+        location.reload();
+    }
+
+    async function deleteAppointment(id) {
+        if(confirm("Are you sure you want to cancel this appointment?")) {
+            const response = await fetch(`/delete_appointment/${id}`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+            alert(result.message);
+            location.reload();
+        }
+    }
+</script>
+{% endblock %}

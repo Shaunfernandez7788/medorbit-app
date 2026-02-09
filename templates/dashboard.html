@@ -110,26 +110,65 @@
                     <label class="form-label text-light mb-2">What are your symptoms?</label>
                     
                     <div class="input-wrapper">
-                        <div class="search-container" onclick="document.getElementById('symptomInput').focus()">
+                        <div class="search-container">
                             <div id="tagsContainer" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
-                            <input type="text" id="symptomInput" class="search-input" placeholder="Type to search..." autocomplete="off">
+                            
+                            <input type="text" id="symptomInput" class="search-input" placeholder="Type or click 🎤..." autocomplete="off">
+                            
+                            <button type="button" onclick="startDictation()" class="btn btn-sm btn-link text-decoration-none" title="Speak">
+                                🎤
+                            </button>
                         </div>
                         <div id="suggestions" class="suggestions-list"></div>
                     </div>
 
                     <button type="submit" class="btn btn-primary mt-4 w-100 py-2 fw-bold">Analyze Health</button>
-                    
-                    <button type="button" onclick="findHospitals()" class="btn btn-outline-danger mt-3 w-100 py-2 fw-bold">
-                        🏥 Find Nearby Hospitals
-                    </button>
                 </form>
+
+                <button type="button" onclick="openGoogleMaps()" class="btn btn-outline-info mt-3 w-100 py-2 fw-bold">
+                    🏥 Find Hospitals on Map (Real)
+                </button>
+
+                <button type="button" onclick="showMockBooking()" class="btn btn-outline-warning mt-2 w-100 py-2 fw-bold">
+                    📅 Book Appointment (Demo)
+                </button>
             </div>
         </div>
+
+        {% if appointments %}
+        <div class="card mb-4" id="my-appointments-section">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <span>📅 My Appointments</span>
+                <span class="badge bg-light text-dark">{{ appointments|length }} Upcoming</span>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for appt in appointments %}
+                    <li class="list-group-item bg-dark text-light border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="text-info">{{ appt.hospital_name }}</strong><br>
+                                <small class="text-muted">
+                                    🗓️ <span id="date-{{appt.id}}">{{ appt.date }}</span> • 
+                                    ⏰ <span id="time-{{appt.id}}">{{ appt.time }}</span>
+                                </small>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-warning me-1" onclick="openEditModal('{{appt.id}}', '{{appt.date}}', '{{appt.time}}')">✏️</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAppointment('{{appt.id}}')">🗑️</button>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
     </div>
     
     <div class="col-md-7">
-        {% if prediction %}
         
+        {% if prediction %}
         <div class="st-green">
             <h4 class="m-0">Predicted Condition: {{ prediction }}</h4>
         </div>
@@ -153,31 +192,84 @@
                 </div>
             </div>
         </div>
-
-        {% else %}
-        <div class="text-center text-muted mt-5">
-            <h3 style="opacity: 0.5;">👈 Select symptoms to start</h3>
-        </div>
         {% endif %}
+
+        <div id="hospital-results" class="mt-4" style="display:none;">
+            <h4 class="text-light mb-3">🏥 Select a Hospital to Book</h4>
+            <div id="hospital-list" class="row"></div>
+        </div>
+
     </div>
 
-</div> <script>
-    // 1. Get the list of all symptoms from Flask/Jinja
-    // 'safe' filter added to prevent errors with JSON quotes
+</div> 
+
+<div class="modal fade" id="bookingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Book Appointment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="selectedHospital">
+        <div class="mb-3">
+            <label>Hospital Name</label>
+            <input type="text" id="hospitalNameDisplay" class="form-control bg-secondary text-light" disabled>
+        </div>
+        <div class="mb-3">
+            <label>Date</label>
+            <input type="date" id="bookDate" class="form-control bg-dark text-light border-secondary">
+        </div>
+        <div class="mb-3">
+            <label>Time</label>
+            <input type="time" id="bookTime" class="form-control bg-dark text-light border-secondary">
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" onclick="confirmBooking()" class="btn btn-success">Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">✏️ Reschedule Appointment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label>New Date</label>
+            <input type="date" id="editDate" class="form-control bg-dark text-light border-secondary">
+        </div>
+        <div class="mb-3">
+            <label>New Time</label>
+            <input type="time" id="editTime" class="form-control bg-dark text-light border-secondary">
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" onclick="saveEdit()" class="btn btn-warning">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // --- SYMPTOM SEARCH LOGIC ---
     const allSymptoms = {{ symptoms | tojson | safe }};
-    
     let selectedSymptoms = [];
 
-    // DOM Elements
     const input = document.getElementById('symptomInput');
     const suggestionsBox = document.getElementById('suggestions');
     const tagsContainer = document.getElementById('tagsContainer');
     const realSelect = document.getElementById('realSelect');
 
-    // --- FUNCTION: Render the Dropdown List ---
     function renderSuggestions(filterText = '') {
         suggestionsBox.innerHTML = ''; 
-        
         const filtered = allSymptoms.filter(s => 
             !selectedSymptoms.includes(s) && 
             s.toLowerCase().replace('_', ' ').includes(filterText.toLowerCase())
@@ -197,7 +289,6 @@
         }
     }
 
-    // --- FUNCTION: Add a Symptom ---
     function addSymptom(symptom) {
         selectedSymptoms.push(symptom);
         input.value = ''; 
@@ -207,38 +298,32 @@
         input.focus(); 
     }
 
-    // --- FUNCTION: Remove a Symptom ---
     function removeSymptom(symptom) {
         selectedSymptoms = selectedSymptoms.filter(s => s !== symptom);
         renderTags();
         updateHiddenSelect();
     }
 
-    // --- FUNCTION: Render Tags ---
     function renderTags() {
         tagsContainer.innerHTML = '';
         selectedSymptoms.forEach(s => {
             const tag = document.createElement('div');
             tag.className = 'tag';
-            
             const text = document.createElement('span');
             text.textContent = s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            
             const cross = document.createElement('span');
             cross.className = 'remove-btn';
-            cross.innerHTML = '&times;'; // Changed to HTML entity for safety
+            cross.innerHTML = '×';
             cross.onclick = (e) => {
                 e.stopPropagation(); 
                 removeSymptom(s);
             };
-
             tag.appendChild(text);
             tag.appendChild(cross);
             tagsContainer.appendChild(tag);
         });
     }
 
-    // --- FUNCTION: Update Hidden Select ---
     function updateHiddenSelect() {
         realSelect.innerHTML = '';
         selectedSymptoms.forEach(s => {
@@ -249,39 +334,159 @@
         });
     }
 
-    // --- EVENT LISTENERS ---
     input.addEventListener('input', (e) => renderSuggestions(e.target.value));
     input.addEventListener('click', () => renderSuggestions(input.value));
     input.addEventListener('focus', () => renderSuggestions(input.value));
-
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.input-wrapper')) {
             suggestionsBox.style.display = 'none';
         }
     });
 
-    // --- HOSPITAL FUNCTIONS ---
-    function findHospitals() {
+    // --- FUNCTION 1: REAL GOOGLE MAPS (Opens in New Tab) ---
+    function openGoogleMaps() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(showPosition, showError);
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                // Opens a real Google Maps search centered on the user
+                const url = `https://www.google.com/maps/search/hospitals/@${lat},${lon},14z`;
+                window.open(url, "_blank");
+            }, () => {
+                // Fallback if location denied
+                window.open("https://www.google.com/maps/search/hospitals/", "_blank");
+            });
         } else {
             alert("Geolocation is not supported by this browser.");
-            // Fallback to general search
-            window.open("https://www.google.com/maps/search/hospitals+near+me", "_blank");
+            window.open("https://www.google.com/maps/search/hospitals/", "_blank");
         }
     }
 
-    function showPosition(position) {
-        let lat = position.coords.latitude;
-        let lon = position.coords.longitude;
-        // CORRECTED URL:
-        let url = `https://www.google.com/maps/search/hospitals/@${lat},${lon},15z`;
-        window.open(url, "_blank");
+    // --- FUNCTION 2: SHOW MOCK HOSPITALS (For Booking Demo) ---
+    function showMockBooking() {
+        document.getElementById('hospital-results').style.display = 'block';
+        const list = document.getElementById('hospital-list');
+        list.innerHTML = ''; // Clear previous
+
+        // Imaginary Hospital List
+        const mockHospitals = [
+            { name: "MedOrbit General Hospital", dist: "1.2 km", type: "General" },
+            { name: "Apollo Mock Clinic", dist: "2.5 km", type: "Clinic" },
+            { name: "Sunrise Demo Care", dist: "3.0 km", type: "Specialist" },
+            { name: "City Trauma Center", dist: "4.1 km", type: "Emergency" }
+        ];
+
+        mockHospitals.forEach(h => {
+            list.innerHTML += `
+            <div class="col-md-6 mb-3">
+                <div class="card bg-dark border-secondary p-3 h-100">
+                    <h5 class="text-info">${h.name}</h5>
+                    <p class="text-muted mb-2">📍 ${h.dist} away • ${h.type}</p>
+                    <button class="btn btn-sm btn-success w-100 mt-auto" onclick="openBooking('${h.name}')">
+                        📅 Book Appointment
+                    </button>
+                </div>
+            </div>`;
+        });
     }
 
-    function showError(error) {
-        // Fallback if user denies location permission
-        window.open("https://www.google.com/maps/search/hospitals+near+me", "_blank");
+    // --- BOOKING MODAL LOGIC ---
+    function openBooking(hospitalName) {
+        document.getElementById('selectedHospital').value = hospitalName;
+        document.getElementById('hospitalNameDisplay').value = hospitalName;
+        new bootstrap.Modal(document.getElementById('bookingModal')).show();
+    }
+
+    async function confirmBooking() {
+        const hospital = document.getElementById('selectedHospital').value;
+        const date = document.getElementById('bookDate').value;
+        const time = document.getElementById('bookTime').value;
+
+        if(!date || !time) {
+            alert("Please select a date and time!");
+            return;
+        }
+
+        const response = await fetch('/book_appointment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hospital_name: hospital, date: date, time: time })
+        });
+
+        const result = await response.json();
+        alert(result.message);
+        
+        if(result.status === 'success') {
+            window.location.reload(); 
+        }
+    }
+
+    // --- NEW: EDIT & DELETE LOGIC ---
+    let editingId = null;
+
+    function openEditModal(id, oldDate, oldTime) {
+        editingId = id;
+        document.getElementById('editDate').value = oldDate;
+        document.getElementById('editTime').value = oldTime;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    async function saveEdit() {
+        const date = document.getElementById('editDate').value;
+        const time = document.getElementById('editTime').value;
+
+        const response = await fetch(`/edit_appointment/${editingId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: date, time: time })
+        });
+
+        const result = await response.json();
+        alert(result.message);
+        location.reload();
+    }
+
+    async function deleteAppointment(id) {
+        if(confirm("Are you sure you want to cancel this appointment?")) {
+            const response = await fetch(`/delete_appointment/${id}`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+            alert(result.message);
+            location.reload();
+        }
+    }
+
+    // --- VOICE RECOGNITION (Added Previously) ---
+    function startDictation() {
+        if (window.hasOwnProperty('webkitSpeechRecognition')) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
+            recognition.start();
+
+            const input = document.getElementById('symptomInput');
+            const originalPlaceholder = input.placeholder;
+            input.placeholder = "Listening... 🔴";
+
+            recognition.onresult = function(e) {
+                const transcript = e.results[0][0].transcript;
+                input.value = transcript;
+                input.placeholder = originalPlaceholder;
+                renderSuggestions(transcript);
+                input.focus();
+            };
+
+            recognition.onerror = function(e) {
+                console.error(e);
+                input.placeholder = "Error. Try again.";
+                setTimeout(() => input.placeholder = originalPlaceholder, 2000);
+                recognition.stop();
+            };
+        } else {
+            alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
+        }
     }
 </script>
 {% endblock %}

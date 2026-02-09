@@ -66,40 +66,73 @@
         ::-webkit-scrollbar-track { background: #0E1117; }
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #888; }
+        
+        /* TICKER ANIMATION */
+        @keyframes scroll-left {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
     </style>
 </head>
 <body>
+
+    <div style="background: black; color: #00ff00; font-family: monospace; padding: 5px; overflow: hidden; white-space: nowrap; border-bottom: 1px solid #333;">
+        <div style="display: inline-block; animation: scroll-left 20s linear infinite;">
+            🔴 LIVE: MedOrbit AI System Online • 🏥 Emergency Services Active • 🤖 Chatbot Ready • 🌍 Global Health Monitoring Active • 🚑 Real-time Hospital Locator Online
+        </div>
+    </div>
+
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">🩺 MedOrbit</a>
+            <a class="navbar-brand text-primary" href="/">🩺 MedOrbit</a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-center">
                     
-                    <a href="tel:112" class="btn btn-sos rounded-pill px-4">
-                        🆘 Emergency: 112
-                    </a>
+                    <li class="nav-item">
+                        <a href="tel:112" class="btn btn-sos rounded-pill px-4 btn-sm me-3">
+                            🆘 Emergency: 112
+                        </a>
+                    </li>
 
                     {% if current_user.is_authenticated %}
-                        <a class="nav-link text-white" href="/logout">Logout</a>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('dashboard') }}">🏠 Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-info" href="{{ url_for('my_appointments') }}">📅 My Appointments</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-warning fw-bold ms-2" href="{{ url_for('scan') }}">📸 AI Scan</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-danger fw-bold ms-2" href="/logout">Logout</a>
+                        </li>
                     {% else %}
-                        <a class="nav-link text-white" href="/login">Login</a>
-                        <a class="nav-link text-white" href="/register">Register</a>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/login">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/register">Register</a>
+                        </li>
                     {% endif %}
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-5">
+    <div class="container mt-4">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-warning" role="alert">{{ message }}</div>
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
@@ -108,7 +141,6 @@
     </div>
 
     {% if current_user.is_authenticated %}
-    
     <div id="chat-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
         <button id="chat-btn" onclick="toggleChat()" class="btn btn-primary rounded-circle p-3 shadow-lg" style="width: 60px; height: 60px; font-size: 24px;">
             💬
@@ -192,6 +224,8 @@
             }
         });
     </script>
-    {% endif %} <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% endif %} 
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
