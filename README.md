@@ -2,7 +2,7 @@
 
 **MedOrbit** is a hybrid AI healthcare platform designed to provide accessible medical guidance. It combines **Supervised Machine Learning** for precise disease prediction with **Multimodal Generative AI (Google Gemini)** for interactive medical consultations and image analysis. The platform also features a full appointment booking system, real-time emergency services, and hospital geolocation.
 
-### 🚀 [Click here to visit MedOrbit Live](https://www.google.com/search?q=https://medorbit-app.onrender.com)
+### 🚀 [Click here to visit MedOrbit Live](https://medorbit-health.onrender.com)
 
 > **Note:** The application is hosted on a free Render instance. Please allow **30-50 seconds** for the server to wake up on the first visit.
 
